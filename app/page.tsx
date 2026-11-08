@@ -31,15 +31,25 @@ export default function Home() {
   if(!diarioId){const {data:created,error:ce}=await supabase.from('diario_bordo').insert({data}).select('id').single();if(ce)throw ce;diarioId=created.id}
   const {data:old,error:oe}=await supabase.from('movimentos').select('id,categoria_id').eq('diario_id',diarioId);if(oe)throw oe;
   const existentes=new Map((old||[]).map(x=>[x.categoria_id,x.id]));
-  for(const c of categorias){const raw=valores[c.id]?.trim();if(raw===undefined||raw==='')continue;const valor=Number(raw.replace(',','.'));if(!Number.isFinite(valor)||valor<0)throw new Error('Valor inválido em '+c.nome);
-   const payload={valor,descricao:descricoes[c.id]||null};const id=existentes.get(c.id);
+  for(const c of categorias){
+    const raw=valores[c.id]?.trim();
+    const id=existentes.get(c.id);
+    // Campo vazio: remover o movimento existente; zero continua a ser um valor válido.
+    if(raw===undefined||raw===''){
+     if(id){const {error}=await supabase.from('movimentos').delete().eq('id',id);if(error)throw error}
+     continue;
+    }
+    const valor=Number(raw.replace(',','.'));
+    if(!Number.isFinite(valor)||valor<0)throw new Error('Valor inválido em '+c.nome);
+   const payload={valor,descricao:descricoes[c.id]||null};
    if(id){const {error}=await supabase.from('movimentos').update(payload).eq('id',id);if(error)throw error}
    else {const {error}=await supabase.from('movimentos').insert({diario_id:diarioId,categoria_id:c.id,...payload});if(error)throw error}
   }
-  setEstado('Registos guardados com sucesso.');await carregarResumos();await carregarDia();
+  await carregarResumos();await carregarDia();setEstado('Registos guardados com sucesso.');
  }catch(e){setEstado('Erro ao guardar: '+mensagemErro(e))}finally{setBusy(false)}}
  if(!ready)return <main className="center">A carregar...</main>;
  if(!session)return <main className="login"><section className="panel"><div className="brand">EL REI <small>GESTÃO · DESDE 1992</small></div><h1>Entrar na gestão</h1><form onSubmit={entrar}><label>Email<input type="email" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Palavra-passe<input type="password" required value={password} onChange={e=>setPassword(e.target.value)}/></label><button disabled={busy}>Entrar</button></form><p className="status">{estado}</p></section></main>;
  if(!autorizado)return <main className="center"><section className="panel"><h2>Acesso restrito</h2><p>Esta conta não está autorizada como administrador.</p><p>{estado}</p><button onClick={()=>supabase.auth.signOut()}>Sair</button></section></main>;
  return <><header><div className="brand">EL REI <small>GESTÃO · DESDE 1992</small></div><div className="user"><span>{session.user.email}</span><button className="ghost" onClick={()=>supabase.auth.signOut()}>Sair</button></div></header><main className="content"><h1>Diário de Bordo</h1><p className="sub">Registo diário de vendas e despesas</p><div className="toolbar"><label>Data <input type="date" value={data} onChange={e=>setData(e.target.value)}/></label><button disabled={busy} onClick={guardar}>{busy?'A guardar...':'Guardar dia'}</button></div><div className="cards"><div className="metric"><span>Vendas</span><strong>{euro(totais.venda)}</strong></div><div className="metric"><span>Despesas</span><strong>{euro(totais.despesa)}</strong></div><div className="metric"><span>Saldo</span><strong>{euro(totais.venda-totais.despesa)}</strong></div></div><p className="status" role="status">{estado}</p><div className="columns">{(['venda','despesa'] as const).map(tipo=><section className="panel" key={tipo}><h2>{tipo==='venda'?'Vendas':'Despesas'}</h2>{categorias.filter(c=>c.tipo===tipo).map(c=><div className="field" key={c.id}><label htmlFor={'v'+c.id}>{c.nome}</label><input id={'v'+c.id} type="number" min="0" step="0.01" placeholder="0,00" value={valores[c.id]??''} onChange={e=>setValores(v=>({...v,[c.id]:e.target.value}))}/></div>)}</section>)}</div><section className="panel"><h2>Últimos 30 dias registados</h2><div className="tablewrap"><table><thead><tr><th>Data</th><th>Vendas</th><th>Despesas</th><th>Saldo</th></tr></thead><tbody>{resumos.map(r=><tr key={r.data}><td><button className="link" onClick={()=>setData(r.data)}>{r.data}</button></td><td>{euro(Number(r.total_vendas))}</td><td>{euro(Number(r.total_despesas))}</td><td>{euro(Number(r.saldo))}</td></tr>)}</tbody></table></div></section></main></>;
 }
+
