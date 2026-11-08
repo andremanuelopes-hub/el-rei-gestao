@@ -8,7 +8,14 @@ type Movimento = { id:string; categoria_id:number; valor:number; descricao:strin
 type Resumo = { data:string; total_vendas:number; total_despesas:number; saldo:number };
 const hoje = () => new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
 const euro = (n:number) => new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR'}).format(n);
-function mensagemErro(e:unknown) { return e instanceof Error ? e.message : String(e); }
+function mensagemErro(e:unknown) {
+ if(e instanceof Error) return e.message;
+ if(e && typeof e === 'object') {
+  const err=e as {message?:string;code?:string;details?:string;hint?:string};
+  return [err.message,err.code && `Código: ${err.code}`,err.details,err.hint].filter(Boolean).join(' | ') || JSON.stringify(e);
+ }
+ return String(e);
+}
 export default function Home() {
  const [session,setSession]=useState<Session|null>(null);
  const [ready,setReady]=useState(false),[autorizado,setAutorizado]=useState(false);
@@ -36,7 +43,7 @@ export default function Home() {
     const id=existentes.get(c.id);
     // Campo vazio: remover o movimento existente; zero continua a ser um valor válido.
     if(raw===undefined||raw===''){
-     if(id){const {error}=await supabase.from('movimentos').delete().eq('id',id);if(error)throw error}
+     if(id){const {error}=await supabase.from('movimentos').delete().eq('id',id);if(error)throw new Error('Ao limpar '+c.nome+': '+mensagemErro(error))}
      continue;
     }
     const valor=Number(raw.replace(',','.'));
@@ -52,5 +59,3 @@ export default function Home() {
  if(!autorizado)return <main className="center"><section className="panel"><h2>Acesso restrito</h2><p>Esta conta não está autorizada como administrador.</p><p>{estado}</p><button onClick={()=>supabase.auth.signOut()}>Sair</button></section></main>;
  return <><header><div className="brand">EL REI <small>GESTÃO · DESDE 1992</small></div><div className="user"><span>{session.user.email}</span><button className="ghost" onClick={()=>supabase.auth.signOut()}>Sair</button></div></header><main className="content"><h1>Diário de Bordo</h1><p className="sub">Registo diário de vendas e despesas</p><div className="toolbar"><label>Data <input type="date" value={data} onChange={e=>setData(e.target.value)}/></label><button disabled={busy} onClick={guardar}>{busy?'A guardar...':'Guardar dia'}</button></div><div className="cards"><div className="metric"><span>Vendas</span><strong>{euro(totais.venda)}</strong></div><div className="metric"><span>Despesas</span><strong>{euro(totais.despesa)}</strong></div><div className="metric"><span>Saldo</span><strong>{euro(totais.venda-totais.despesa)}</strong></div></div><p className="status" role="status">{estado}</p><div className="columns">{(['venda','despesa'] as const).map(tipo=><section className="panel" key={tipo}><h2>{tipo==='venda'?'Vendas':'Despesas'}</h2>{categorias.filter(c=>c.tipo===tipo).map(c=><div className="field" key={c.id}><label htmlFor={'v'+c.id}>{c.nome}</label><input id={'v'+c.id} type="number" min="0" step="0.01" placeholder="0,00" value={valores[c.id]??''} onChange={e=>setValores(v=>({...v,[c.id]:e.target.value}))}/></div>)}</section>)}</div><section className="panel"><h2>Últimos 30 dias registados</h2><div className="tablewrap"><table><thead><tr><th>Data</th><th>Vendas</th><th>Despesas</th><th>Saldo</th></tr></thead><tbody>{resumos.map(r=><tr key={r.data}><td><button className="link" onClick={()=>setData(r.data)}>{r.data}</button></td><td>{euro(Number(r.total_vendas))}</td><td>{euro(Number(r.total_despesas))}</td><td>{euro(Number(r.saldo))}</td></tr>)}</tbody></table></div></section></main></>;
 }
-
-
