@@ -40,6 +40,7 @@ export default function Home(){
  const [novaFatura,setNovaFatura]=useState({data:hoje(),cliente:'',numero:'',valor:''});
  const [faturasLoading,setFaturasLoading]=useState(false);
  const [semana,setSemana]=useState(inicioSemana(hoje()));
+ const [mes,setMes]=useState(hoje().slice(0,7));
  const [linhasSemana,setLinhasSemana]=useState<LinhaSemanal[]>([]);
  const [grupos,setGrupos]=useState<Record<number,GrupoSemanal>>({});
  const [semanaLoading,setSemanaLoading]=useState(false);
