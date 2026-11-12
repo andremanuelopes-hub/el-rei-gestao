@@ -116,3 +116,37 @@ th, td {
     flex-wrap: wrap;
   }
 }
+
+/* Corrigir alinhamento do formulário de fornecedores */
+
+.columns .panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.columns .panel form > label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  width: 100%;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.columns .panel form > label input,
+.columns .panel form > label select,
+.columns .panel form > label textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  font-size: 17px;
+}
+
+.columns .panel form > .toolbar {
+  margin: 12px 0 0;
+  justify-content: flex-start;
+}
+
