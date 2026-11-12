@@ -41,6 +41,7 @@ export default function Home(){
  const [faturasLoading,setFaturasLoading]=useState(false);
  const [semana,setSemana]=useState(inicioSemana(hoje()));
  const [mes,setMes]=useState(hoje().slice(0,7));
+ const [mesLoading,setMesLoading]=useState(false);
  const [linhasSemana,setLinhasSemana]=useState<LinhaSemanal[]>([]);
  const [grupos,setGrupos]=useState<Record<number,GrupoSemanal>>({});
  const [semanaLoading,setSemanaLoading]=useState(false);
