@@ -22,3 +22,97 @@
   background-color: #ead4dc;
   color: #601a32;
 }
+
+/* EL REI GESTÃO — Fonte Avenir e letras maiores */
+
+:root {
+  font-family: Avenir, "Avenir Next", "Segoe UI", Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+/* Marca e títulos */
+.brand {
+  font-family: Avenir, "Avenir Next", "Segoe UI", Arial, sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.brand small {
+  font-family: inherit;
+  font-size: 12px;
+}
+
+h1 {
+  font-family: inherit;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+h2 {
+  font-family: inherit;
+  font-size: 23px;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 20px;
+}
+
+/* Menus e botões */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 17px;
+}
+
+.toolbar button {
+  font-size: 18px;
+}
+
+button {
+  padding: 13px 20px;
+}
+
+/* Totais */
+.metric span {
+  font-size: 17px;
+}
+
+.metric strong {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+/* Tabelas */
+table {
+  font-size: 17px;
+}
+
+th, td {
+  padding: 14px 12px;
+}
+
+/* Campos e descrições */
+.field label,
+.user,
+.sub,
+.status {
+  font-size: 17px;
+}
+
+/* Melhor leitura no telemóvel */
+@media (max-width: 700px) {
+  h1 { font-size: 26px; }
+  h2 { font-size: 21px; }
+
+  .metric strong {
+    font-size: 24px;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+}
