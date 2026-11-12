@@ -1,8 +1,67 @@
+'use client';
+import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
-
-
-    
-  
+type Categoria = { id:number; tipo:'venda'|'despesa'; nome:string; ordem:number };
+type Movimento = { id:string; categoria_id:number; valor:number; descricao:string|null };
+type Resumo = { data:string; total_vendas:number; total_despesas:number; saldo:number };
+type Fornecedor = { id:string; nome:string; nif:string|null; telefone:string|null; email:string|null; observacoes:string|null; ativo:boolean };
+type MovimentoFornecedor = { id:string; fornecedor_id:string; data:string; tipo:'compra'|'pagamento'; valor:number; documento:string|null; descricao:string|null; vencimento?:string|null };
+type GrupoSemanal = 'caixa_banco'|'venda_faturada'|'venda_outra'|'despesa_faturada'|'despesa_outra';
+type FaturaInterna = {id:string; data:string; cliente:string; numero:string; valor:number};
+type LinhaSemanal = { data:string; categoria_id:number; valor:number };
+type AssociacaoPagamento = { id:string; pagamento_id:string; fatura_id:string; valor:number };
+const hoje = () => new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+const euro = (n:number) => new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR'}).format(n);
+function mensagemErro(e:unknown):string {
+ if (e && typeof e === 'object') {const v=e as {message?:unknown;details?:unknown;hint?:unknown;code?:unknown}; return [v.message,v.details,v.hint,v.code].filter(x=>typeof x==='string'&&x).join(' | ')||JSON.stringify(e);}
+ return String(e);
+}
+const inicioSemana = (iso:string) => {const d=new Date(iso+'T12:00:00');const dia=(d.getDay()+6)%7;d.setDate(d.getDate()-dia);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
+const somarDias = (iso:string, dias:number) => {const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+dias);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
+const gruposSemanais:{value:GrupoSemanal;label:string}[]=[{value:'caixa_banco',label:'Caixa para banco'},{value:'venda_faturada',label:'Vendas faturadas'},{value:'venda_outra',label:'Outras vendas'},{value:'despesa_faturada',label:'Despesa com contribuinte'},{value:'despesa_outra',label:'Outras despesas'}];
+const grupoInicial = (c:Categoria):GrupoSemanal => {if(c.tipo==='venda')return 'caixa_banco';return /panik|lays|lay.s|g[aá]s|h[eé]lder|helder|outro faturado/i.test(c.nome)?'despesa_faturada':'despesa_outra'};
+const vazioFornecedor = {nome:'',nif:'',telefone:'',email:'',observacoes:''};
+export default function Home(){
+ const [session,setSession]=useState<Session|null>(null);
+ const [ready,setReady]=useState(false),[autorizado,setAutorizado]=useState(false);
+ const [email,setEmail]=useState(''),[password,setPassword]=useState('');
+ const [aba,setAba]=useState<'diario'|'mensal'|'fornecedores'|'conta'>('diario');
+ const [data,setData]=useState(hoje()),[categorias,setCategorias]=useState<Categoria[]>([]);
+ const [valores,setValores]=useState<Record<number,string>>({}),[descricoes,setDescricoes]=useState<Record<number,string>>({});
+ const [resumos,setResumos]=useState<Resumo[]>([]),[estado,setEstado]=useState(''),[busy,setBusy]=useState(false);
+ const [fornecedores,setFornecedores]=useState<Fornecedor[]>([]),[movimentosFornecedor,setMovimentosFornecedor]=useState<MovimentoFornecedor[]>([]);
+ const [fornecedorSelecionado,setFornecedorSelecionado]=useState('');
+ const [associacoes,setAssociacoes]=useState<AssociacaoPagamento[]>([]);
+ const [faturasInternas,setFaturasInternas]=useState<FaturaInterna[]>([]);
+ const [faturaEditando,setFaturaEditando]=useState<string|null>(null);
+ const [novaFatura,setNovaFatura]=useState({data:hoje(),cliente:'',numero:'',valor:''});
+ const [faturasLoading,setFaturasLoading]=useState(false);
+ const [semana,setSemana]=useState(inicioSemana(hoje()));
+ const [linhasSemana,setLinhasSemana]=useState<LinhaSemanal[]>([]);
+ const [grupos,setGrupos]=useState<Record<number,GrupoSemanal>>({});
+ const [semanaLoading,setSemanaLoading]=useState(false);
+ const [configLoading,setConfigLoading]=useState(false);
+ const [novoFornecedor,setNovoFornecedor]=useState(vazioFornecedor);
+ const [editandoFornecedor,setEditandoFornecedor]=useState<string|null>(null);
+ const [novoMovimento,setNovoMovimento]=useState({data:hoje(),tipo:'compra' as 'compra'|'pagamento',valor:'',documento:'',descricao:''});
+ useEffect(()=>{void supabase.auth.getSession().then(({data})=>{setSession(data.session);setReady(true)});const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,s)=>setSession(s));return ()=>subscription.unsubscribe()},[]);
+ useEffect(()=>{if(!session){setAutorizado(false);return}let active=true;void supabase.from('administradores').select('user_id').eq('user_id',session.user.id).maybeSingle().then(({data,error})=>{if(active){setAutorizado(!!data&&!error);if(error)setEstado(mensagemErro(error))}});return ()=>{active=false}},[session]);
+ useEffect(()=>{if(!session||!autorizado)return;void carregarCategorias();void carregarDia();void carregarResumos();void carregarFornecedores()},[session,autorizado]);
+ useEffect(()=>{if(session&&autorizado)void carregarDia()},[data]);
+ useEffect(()=>{if(session&&autorizado){void carregarSemana();void carregarFaturas()}},[semana,session,autorizado]);
+ useEffect(()=>{if(session&&autorizado&&categorias.length){void carregarGrupos()}},[categorias,session,autorizado]);
+ async function carregarFaturas(){setFaturasLoading(true);const {data:rows,error}=await supabase.from('faturas_emitidas_internas').select('id,data,cliente,numero,valor').gte('data',semana).lte('data',somarDias(semana,6)).order('data',{ascending:false});if(error)setEstado('Faturas emitidas: '+mensagemErro(error));else setFaturasInternas((rows||[]) as FaturaInterna[]);setFaturasLoading(false)}
+ async function guardarFatura(e:FormEvent){e.preventDefault();const valor=Number(novaFatura.valor.replace(',','.'));if(!novaFatura.cliente.trim()||!novaFatura.numero.trim()||!Number.isFinite(valor)||valor<=0){setEstado('Preenche cliente, número e valor positivo.');return}setBusy(true);try{const payload={data:novaFatura.data,cliente:novaFatura.cliente.trim(),numero:novaFatura.numero.trim(),valor};const {error}=faturaEditando?await supabase.from('faturas_emitidas_internas').update(payload).eq('id',faturaEditando):await supabase.from('faturas_emitidas_internas').insert(payload);if(error)throw error;setFaturaEditando(null);setNovaFatura({data:hoje(),cliente:'',numero:'',valor:''});await carregarFaturas();setEstado('Fatura registada para controlo interno.')}catch(e){setEstado('Erro na fatura: '+mensagemErro(e))}finally{setBusy(false)}}
+ function editarFatura(f:FaturaInterna){setFaturaEditando(f.id);setNovaFatura({data:f.data,cliente:f.cliente,numero:f.numero,valor:String(f.valor)});setEstado('A editar fatura '+f.numero)}
+ async function eliminarFatura(f:FaturaInterna){if(!window.confirm('Eliminar o registo interno da fatura '+f.numero+'?'))return;setBusy(true);try{const {error}=await supabase.from('faturas_emitidas_internas').delete().eq('id',f.id);if(error)throw error;await carregarFaturas();setEstado('Registo interno eliminado.')}catch(e){setEstado('Erro ao eliminar fatura: '+mensagemErro(e))}finally{setBusy(false)}}
+ async function carregarGrupos(){setConfigLoading(true);const {data,error}=await supabase.from('categoria_grupo_semanal').select('categoria_id,grupo');if(error){setEstado('Configuração semanal: '+mensagemErro(error));setConfigLoading(false);return}const next:Record<number,GrupoSemanal>={};for(const c of categorias)next[c.id]=grupoInicial(c);for(const x of data||[])next[x.categoria_id]=x.grupo as GrupoSemanal;setGrupos(next);setConfigLoading(false)}
+ async function guardarGrupo(c:Categoria,grupo:GrupoSemanal){setConfigLoading(true);const {error}=await supabase.from('categoria_grupo_semanal').upsert({categoria_id:c.id,grupo},{onConflict:'categoria_id'});if(error)setEstado('Erro na classificação: '+mensagemErro(error));else{setGrupos(prev=>({...prev,[c.id]:grupo}));setEstado('Classificação guardada para os dois administradores.')}setConfigLoading(false)}
+ async function carregarSemana(){setSemanaLoading(true);try{const fim=somarDias(semana,6);const {data:dias,error:de}=await supabase.from('diario_bordo').select('id,data').gte('data',semana).lte('data',fim).order('data');if(de)throw de;if(!dias?.length){setLinhasSemana([]);return}const datas=new Map(dias.map(d=>[d.id,d.data]));const {data:movs,error:me}=await supabase.from('movimentos').select('diario_id,categoria_id,valor').in('diario_id',dias.map(d=>d.id));if(me)throw me;setLinhasSemana((movs||[]).map(m=>({data:datas.get(m.diario_id)||semana,categoria_id:m.categoria_id,valor:Number(m.valor)})))}catch(e){setEstado('Erro no resumo semanal: '+mensagemErro(e))}finally{setSemanaLoading(false)}}
+ const resumoSemana=useMemo(()=>{const totais:{caixa_banco:number;venda_faturada:number;venda_outra:number;despesa_faturada:number;despesa_outra:number}={caixa_banco:0,venda_faturada:0,venda_outra:0,despesa_faturada:0,despesa_outra:0};const detalhes:Record<number,number>={};for(const m of linhasSemana){const c=categorias.find(c=>c.id===m.categoria_id);if(!c)continue;const grupo=grupos[c.id]||grupoInicial(c);totais[grupo]+=m.valor;detalhes[c.id]=(detalhes[c.id]||0)+m.valor}return {totais,detalhes}},[linhasSemana,categorias,grupos]);
+ async function carregarCategorias(){const {data,error}=await supabase.from('categorias').select('id,tipo,nome,ordem').eq('ativa',true).order('tipo',{ascending:false}).order('ordem');if(error)setEstado(mensagemErro(error));else setCategorias(data as Categoria[])}
  async function carregarDia(){const {data:diario,error}=await supabase.from('diario_bordo').select('id').eq('data',data).maybeSingle();if(error){setEstado(mensagemErro(error));return}if(!diario){setValores({});setDescricoes({});return}const {data:movs,error:me}=await supabase.from('movimentos').select('id,categoria_id,valor,descricao').eq('diario_id',diario.id);if(me){setEstado(mensagemErro(me));return}const next:Record<number,string>={},notas:Record<number,string>={};for(const m of (movs||[]) as Movimento[]){next[m.categoria_id]=String(m.valor);notas[m.categoria_id]=m.descricao||''}setValores(next);setDescricoes(notas)}
  async function carregarResumos(){const {data,error}=await supabase.from('resumo_diario').select('data,total_vendas,total_despesas,saldo').order('data',{ascending:false}).limit(30);if(error)setEstado(mensagemErro(error));else setResumos(data as Resumo[])}
  async function carregarFornecedores(){const {data,error}=await supabase.from('fornecedores').select('id,nome,nif,telefone,email,observacoes,ativo').order('nome');if(error){setEstado('Fornecedores: '+mensagemErro(error));return}setFornecedores((data||[]) as Fornecedor[])}
