@@ -86,6 +86,7 @@ function AgendaSemanal(){
  const diasNoMes=new Date(mesData.getFullYear(),mesData.getMonth()+1,0).getDate();
  const nomeMes=mesData.toLocaleDateString('pt-PT',{month:'long',year:'numeric'});
  const tarefasDia=tarefas.filter(t=>t.data===diaSelecionado).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+ const tarefasHoje=tarefas.filter(t=>t.data===hojeIso).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
  const mudarMesAgenda=(deslocamento:number)=>{const d=new Date(mesData.getFullYear(),mesData.getMonth()+deslocamento,1);setMesAgenda(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);setDiaSelecionado(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`)};
 
  const proximas=tarefas.filter(t=>!t.concluida&&(t.data>hojeIso||(t.data===hojeIso&&(!t.hora||t.hora.slice(0,5)>=`${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`)))).sort((a,b)=>a.data.localeCompare(b.data)||(a.hora||'').localeCompare(b.hora||''));
