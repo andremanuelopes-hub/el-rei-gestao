@@ -30,7 +30,7 @@ const hoje = () => new Date(Date.now()-new Date().getTimezoneOffset()*60000).toI
 const euro = (n:number) => new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR'}).format(n);
 // Datas apresentadas em DD/MM/AAAA; Supabase continua a receber AAAA-MM-DD.
 const dataPT=(iso:string|null|undefined)=>{if(!iso)return '—';const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);return m?`${m[3]}/${m[2]}/${m[1]}`:iso};
-function DataPortugues({value,onChange,required,id,'aria-label':ariaLabel}:{value:string;onChange:(e:{target:{value:string}})=>void;required?:boolean;id?:string;'aria-label'?:string}){
+function DataPortugues({value,onChange,required,id,'aria-label':ariaLabel}:{value:string;onChange:(e:{target:{value:string}})=>void;required?:boolean;id?:string;'aria-label'?:string;type?:string;min?:string;max?:string;step?:string;placeholder?:string}){
  const [texto,setTexto]=useState(dataPT(value)==='—'?'':dataPT(value));
  useEffect(()=>{setTexto(dataPT(value)==='—'?'':dataPT(value))},[value]);
  const converter=(v:string)=>{const m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);if(!m)return null;const iso=`${m[3]}-${m[2]}-${m[1]}`;const d=new Date(iso+'T12:00:00');return !Number.isNaN(d.getTime())&&d.getFullYear()===Number(m[3])&&d.getMonth()+1===Number(m[2])&&d.getDate()===Number(m[1])?iso:null};
