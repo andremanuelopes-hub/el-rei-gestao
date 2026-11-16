@@ -150,3 +150,11 @@ th, td {
   justify-content: flex-start;
 }
 
+
+/* Identidade visual oficial El Rei: cabecalho e entrada */
+.brand-with-logo{display:flex;align-items:center;gap:14px;letter-spacing:normal}
+.brand-with-logo .brand-logo{display:block;width:112px;max-width:34vw;height:auto;object-fit:contain;background:#fff;border-radius:7px;padding:4px;box-sizing:border-box}
+.brand-with-logo .brand-label{font-family:Georgia,serif;font-size:24px;font-weight:bold;letter-spacing:2px}
+.brand-with-logo .brand-label small{font:10px Arial,sans-serif;letter-spacing:1.5px;margin-top:4px}
+.login .brand-with-logo{justify-content:center;flex-wrap:wrap;text-align:center}
+@media(max-width:550px){.brand-with-logo{gap:8px}.brand-with-logo .brand-logo{width:76px}.brand-with-logo .brand-label{font-size:19px;letter-spacing:1px}}
