@@ -158,3 +158,8 @@ th, td {
 .brand-with-logo .brand-label small{font:10px Arial,sans-serif;letter-spacing:1.5px;margin-top:4px}
 .login .brand-with-logo{justify-content:center;flex-wrap:wrap;text-align:center}
 @media(max-width:550px){.brand-with-logo{gap:8px}.brand-with-logo .brand-logo{width:76px}.brand-with-logo .brand-label{font-size:19px;letter-spacing:1px}}
+
+/* Botoes uniformes apenas no menu principal */
+.modulos-principais{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));align-items:stretch;gap:10px}
+.modulos-principais>button{width:100%;min-height:54px;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal;font-size:15px;padding:12px 10px}
+@media(max-width:540px){.modulos-principais{grid-template-columns:repeat(2,minmax(0,1fr))}}
