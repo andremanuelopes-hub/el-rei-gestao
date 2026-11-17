@@ -3,7 +3,7 @@ import {useEffect,useMemo,useState} from 'react';
 import type {FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
 type Produto={id:string;nome:string;unidade:string;iva:number};
-type Preco={id:string;produto_id:string;fornecedor:string;data:string;preco:number;quantidade:number|null;observacoes:string|null;embalagem_quantidade?:number|null;embalagem_unidade?:string|null};
+type Preco={id:string;produto_id:string;fornecedor:string;data:string;preco:number;quantidade:number|null;observacoes:string|null;embalagem_quantidade?:number|null;embalagem_unidade?:string|null;created_at?:string|null};
 const unidades=['kg','g','L','ml','un'];
 const calcularUnitario=(preco:Preco,produto?:Produto)=>{
  const q=Number(preco.embalagem_quantidade);
