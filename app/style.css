@@ -163,3 +163,8 @@ th, td {
 .modulos-principais{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));align-items:stretch;gap:10px}
 .modulos-principais>button{width:100%;min-height:54px;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal;font-size:15px;padding:12px 10px}
 @media(max-width:540px){.modulos-principais{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Menu principal: uma linha horizontal, botoes iguais e deslocacao em ecra pequeno. */
+.modulos-principais{display:grid;grid-template-columns:repeat(7,minmax(145px,1fr));gap:8px;align-items:stretch;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;scrollbar-width:thin;margin:12px 0 16px;padding-bottom:5px}
+.modulos-principais>button{box-sizing:border-box;width:100%;height:56px;min-height:56px;min-width:0;padding:8px 6px;font-size:14px;line-height:1.2;white-space:normal}
+@media(max-width:540px){.modulos-principais{grid-template-columns:repeat(7,minmax(145px,1fr))}}
