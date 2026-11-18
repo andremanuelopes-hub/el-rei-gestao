@@ -59,6 +59,32 @@ export default function HistoricoMensal(){
  const vendas=linhas.filter(l=>l.tipo==='venda').reduce((n,l)=>n+l.valor,0);
  const despesas=linhas.filter(l=>l.tipo==='despesa').reduce((n,l)=>n+l.valor,0);
  const totalGrupo=(g:Grupo)=>linhas.filter(l=>(l.grupo||'diario')===g).reduce((n,l)=>n+l.valor,0);
+ function exportarPDF(){
+  if(loading||!linhas.length)return;
+  const janela=window.open('','_blank');
+  if(!janela){setMensagem('O navegador bloqueou a janela do PDF. Autoriza pop-ups para este site e tenta novamente.');return}
+  const escapar=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
+  const tituloMes=new Date(Number(mes.slice(0,4)),Number(mes.slice(5,7))-1,1).toLocaleDateString('pt-PT',{month:'long',year:'numeric'});
+  const total=(tipo:Linha['tipo'])=>linhas.filter(l=>l.tipo===tipo).reduce((s,l)=>s+l.valor,0);
+  const linhasOrdenadas=[...linhas].sort((a,b)=>a.data.localeCompare(b.data)||String(a.grupo).localeCompare(String(b.grupo)));
+  const tabela=linhasOrdenadas.map(l=>`<tr><td>${escapar(dataPt(l.data))}</td><td>${escapar(nomes[l.grupo||'diario'])}</td><td>${escapar(l.categoria)}</td><td>${escapar(l.descricao||'—')}</td><td class="valor">${escapar(eur(l.valor))}</td></tr>`).join('');
+  const grupos=(Object.keys(nomes) as Grupo[]).map(g=>`<tr><td>${escapar(nomes[g])}</td><td class="valor">${escapar(eur(totalGrupo(g)))}</td></tr>`).join('');
+  const html=`<!doctype html><html lang="pt"><head><meta charset="utf-8"/><title>El Rei - Histórico ${escapar(mes)}</title><style>
+   @page{size:A4 landscape;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#292326;font-size:10px;margin:0}
+   h1{color:#641d32;font-size:22px;margin:0 0 5px}h2{font-size:13px;color:#641d32;margin:18px 0 7px}p{margin:3px 0 9px}.sub{color:#666}
+   table{width:100%;border-collapse:collapse}th{text-align:left;background:#641d32;color:#fff;padding:7px 6px}td{border-bottom:1px solid #ddd;padding:6px;vertical-align:top;overflow-wrap:anywhere}
+   .valor{text-align:right;white-space:nowrap}tbody tr:nth-child(even){background:#f8f4f5}thead{display:table-header-group}tr{break-inside:avoid}
+   .resumo{max-width:500px}.resumo td{padding:5px}.rodape{margin-top:15px;font-size:9px;color:#777}
+   @media screen{body{padding:20px;max-width:1200px;margin:auto}}
+   </style></head><body><h1>Pastelaria El Rei · Histórico Mensal</h1><p><strong>${escapar(tituloMes)}</strong> · ${arquivo?'Mês fechado e arquivado':'Mês aberto (dados atuais)'}</p>
+   <p class="sub">Emitido em ${escapar(new Date().toLocaleString('pt-PT'))} · Todos os movimentos, sem Mercadorias</p>
+   <h2>Resumo financeiro</h2><table class="resumo"><tbody><tr><td>Vendas operacionais</td><td class="valor">${escapar(eur(total('venda')))}</td></tr><tr><td>Despesas operacionais</td><td class="valor">${escapar(eur(total('despesa')))}</td></tr><tr><td><strong>Diferença operacional indicativa</strong></td><td class="valor"><strong>${escapar(eur(total('venda')-total('despesa')))}</strong></td></tr>${grupos}</tbody></table>
+   <p class="sub">Faturas, pagamentos, Banco e Cofre e ajustes são apresentados separadamente, sem dupla contagem no saldo operacional.</p>
+   <h2>Todos os movimentos (${linhasOrdenadas.length})</h2><table><thead><tr><th>Data</th><th>Origem</th><th>Categoria</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>${tabela}</tbody></table>
+   <p class="rodape">El Rei Gestão · Documento de consulta interna. Os valores refletem ${arquivo?'o arquivo fechado':'os registos disponíveis no momento da exportação'}.</p></body></html>`;
+  janela.document.open();janela.document.write(html);janela.document.close();
+  janela.addEventListener('load',()=>{janela.focus();janela.print()},{once:true});
+ }
  async function fechar(){if(arquivo||fechando||loading||mes>=mesAtual())return;
   if(!window.confirm(`Fechar ${mes}? O arquivo ficará protegido contra alterações. Confirma primeiro que todos os movimentos estão corretos.`))return;
   setFechando(true);setMensagem('');try{
@@ -69,7 +95,7 @@ export default function HistoricoMensal(){
  }
  return <section className="panel" style={{marginTop:16}}>
   <h1>Histórico Mensal</h1><p className="sub">Consulta diária de movimentos financeiros. Mercadorias não incluídas. Os totais distinguem movimentos operacionais e informativos para evitar duplicações.</p>
-  <div className="toolbar" style={{alignItems:'end',flexWrap:'wrap'}}><label>Mês<input type="month" value={mes} onChange={e=>setMes(e.target.value)}/></label><button type="button" className="ghost" disabled={loading||fechando} onClick={()=>void carregar()}>Atualizar</button><button type="button" disabled={loading||fechando||!!arquivo||mes>=mesAtual()} onClick={()=>void fechar()}>{arquivo?'Mês fechado':fechando?'A fechar...':'Fechar e guardar mês'}</button></div>
+  <div className="toolbar" style={{alignItems:'end',flexWrap:'wrap'}}><label>Mês<input type="month" value={mes} onChange={e=>setMes(e.target.value)}/></label><button type="button" className="ghost" disabled={loading||fechando} onClick={()=>void carregar()}>Atualizar</button><button type="button" className="ghost" disabled={loading||fechando||linhas.length===0} onClick={exportarPDF}>Exportar PDF</button><button type="button" disabled={loading||fechando||!!arquivo||mes>=mesAtual()} onClick={()=>void fechar()}>{arquivo?'Mês fechado':fechando?'A fechar...':'Fechar e guardar mês'}</button></div>
   <p className="sub">{arquivo?`Arquivo fechado em ${new Date(arquivo.fechado_em).toLocaleString('pt-PT')}.`:'Mês aberto: os dados são consultados diretamente nos registos existentes.'}</p>
   {mensagem&&<p role="status" className="status">{mensagem}</p>}
   {loading?<p>A carregar...</p>:<>
