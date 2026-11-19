@@ -3,7 +3,7 @@ import {useCallback,useEffect,useMemo,useState} from 'react';
 import {supabase} from '../lib/supabase';
 
 type Grupo='diario'|'faturas'|'despesas_mensais'|'despesas_caixa'|'acrescimos'|'fornecedores'|'pagamentos'|'banco';
-type Linha={data:string;categoria:string;tipo:'venda'|'despesa'|'informativo';valor:number;descricao:string;grupo?:Grupo;id?:string};
+type Linha={data:string;categoria:string;tipo:'venda'|'despesa'|'informativo';valor:number;descricao:string;grupo?:Grupo;id?:string;fornecedor?:string;documento?:string;vencimento?:string;origemPagamento?:string;cliente?:string;tipoFatura?:string;conta?:string;direcao?:string};
 type Arquivo={mes:string;fechado_em:string;dados:Linha[]};
 const eur=(n:number)=>new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR'}).format(n);
 const dataPt=(s:string)=>s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4);
@@ -34,19 +34,19 @@ export default function HistoricoMensal(){
    }
   }
   const faturas=await ler('faturas_emitidas_internas','id,data,cliente,numero,valor,tipo_fatura');
-  for(const f of faturas)out.push({data:f.data,categoria:'Fatura emitida',tipo:'informativo',valor:Number(f.valor),descricao:`${f.cliente||'Cliente'} · ${f.numero||'Sem número'}${f.tipo_fatura?' · '+f.tipo_fatura:''}`,grupo:'faturas',id:String(f.id)});
+  for(const f of faturas)out.push({data:f.data,categoria:'Fatura emitida',tipo:'informativo',valor:Number(f.valor),descricao:`${f.cliente||'Cliente'} · ${f.numero||'Sem número'}${f.tipo_fatura?' · '+f.tipo_fatura:''}`,grupo:'faturas',id:String(f.id),cliente:f.cliente||'',documento:f.numero||'',tipoFatura:f.tipo_fatura||''});
   const despesas=await ler('despesas_mensais_sem_contribuinte','id,data,descricao,valor');
   for(const d of despesas)out.push({data:d.data,categoria:'Despesa mensal',tipo:'despesa',valor:Number(d.valor),descricao:d.descricao||'',grupo:'despesas_mensais',id:String(d.id)});
   const caixa=await ler('despesas_caixa_gomas','id,data,categoria,valor');
   for(const d of caixa)out.push({data:d.data,categoria:d.categoria||'Despesa de caixa',tipo:'informativo',valor:Number(d.valor),descricao:'Valor de caixa — ver classificação no Resumo Mensal',grupo:'despesas_caixa',id:String(d.id)});
   const acrescimos=await ler('valores_acrescentados_caixa','id,data,valor');
   for(const d of acrescimos)out.push({data:d.data,categoria:'Acrescentado à caixa',tipo:'informativo',valor:Number(d.valor),descricao:'Ajuste interno de caixa',grupo:'acrescimos',id:String(d.id)});
-  const fornecedores=await ler('fornecedor_movimentos','id,fornecedor_id,data,tipo,valor,documento,descricao');
+  const fornecedores=await ler('fornecedor_movimentos','id,fornecedor_id,data,tipo,valor,documento,descricao,vencimento,origem_pagamento');
   const ids=[...new Set(fornecedores.map(f=>f.fornecedor_id).filter(Boolean))];const nomesFornecedores=new Map<string,string>();
   for(let i=0;i<ids.length;i+=100){const {data,error}=await supabase.from('fornecedores').select('id,nome').in('id',ids.slice(i,i+100));if(error)throw error;for(const f of data||[])nomesFornecedores.set(String(f.id),String(f.nome))}
-  for(const f of fornecedores){const compra=f.tipo==='compra';out.push({data:f.data,categoria:compra?'Fatura de fornecedor':'Pagamento a fornecedor',tipo:'informativo',valor:Number(f.valor),descricao:[nomesFornecedores.get(String(f.fornecedor_id))||'Fornecedor',f.documento,f.descricao].filter(Boolean).join(' · '),grupo:compra?'fornecedores':'pagamentos',id:String(f.id)})}
+  for(const f of fornecedores){const compra=f.tipo==='compra';out.push({data:f.data,categoria:compra?'Fatura de fornecedor':'Pagamento a fornecedor',tipo:'informativo',valor:Number(f.valor),descricao:[nomesFornecedores.get(String(f.fornecedor_id))||'Fornecedor',f.documento,f.descricao].filter(Boolean).join(' · '),grupo:compra?'fornecedores':'pagamentos',id:String(f.id),fornecedor:nomesFornecedores.get(String(f.fornecedor_id))||'Fornecedor',documento:f.documento||'',vencimento:f.vencimento||'',origemPagamento:f.origem_pagamento||''})}
   const banco=await ler('movimentos_banco_cofre','id,conta,data,tipo,descricao,valor');
-  for(const b of banco)out.push({data:b.data,categoria:`${b.conta==='banco'?'Banco':'Cofre'} · ${b.tipo==='entrada'?'Entrada':'Saída'}`,tipo:'informativo',valor:Number(b.valor),descricao:b.descricao||'',grupo:'banco',id:String(b.id)});
+  for(const b of banco)out.push({data:b.data,categoria:`${b.conta==='banco'?'Banco':'Cofre'} · ${b.tipo==='entrada'?'Entrada':'Saída'}`,tipo:'informativo',valor:Number(b.valor),descricao:b.descricao||'',grupo:'banco',id:String(b.id),conta:b.conta,direcao:b.tipo});
   return out.sort((a,b)=>a.data.localeCompare(b.data)||String(a.grupo).localeCompare(String(b.grupo)));
  },[mes]);
  const carregar=useCallback(async()=>{setLoading(true);setMensagem('');try{
@@ -85,6 +85,15 @@ export default function HistoricoMensal(){
   janela.document.open();janela.document.write(html);janela.document.close();
   janela.addEventListener('load',()=>{janela.focus();janela.print()},{once:true});
  }
+ async function exportarExcel(){
+  if(loading||!linhas.length)return;
+  setMensagem('A preparar Excel completo...');
+  try{
+   const {criarExcelHistorico}=await import('./exportar-historico-excel');
+   await criarExcelHistorico({mes,linhas,fechado:!!arquivo,fechadoEm:arquivo?.fechado_em||''});
+   setMensagem('Excel completo exportado com sucesso.');
+  }catch(e){setMensagem('Erro ao exportar Excel: '+msg(e))}
+ }
  async function fechar(){if(arquivo||fechando||loading||mes>=mesAtual())return;
   if(!window.confirm(`Fechar ${mes}? O arquivo ficará protegido contra alterações. Confirma primeiro que todos os movimentos estão corretos.`))return;
   setFechando(true);setMensagem('');try{
@@ -95,7 +104,7 @@ export default function HistoricoMensal(){
  }
  return <section className="panel" style={{marginTop:16}}>
   <h1>Histórico Mensal</h1><p className="sub">Consulta diária de movimentos financeiros. Mercadorias não incluídas. Os totais distinguem movimentos operacionais e informativos para evitar duplicações.</p>
-  <div className="toolbar" style={{alignItems:'end',flexWrap:'wrap'}}><label>Mês<input type="month" value={mes} onChange={e=>setMes(e.target.value)}/></label><button type="button" className="ghost" disabled={loading||fechando} onClick={()=>void carregar()}>Atualizar</button><button type="button" className="ghost" disabled={loading||fechando||linhas.length===0} onClick={exportarPDF}>Exportar PDF</button><button type="button" disabled={loading||fechando||!!arquivo||mes>=mesAtual()} onClick={()=>void fechar()}>{arquivo?'Mês fechado':fechando?'A fechar...':'Fechar e guardar mês'}</button></div>
+  <div className="toolbar" style={{alignItems:'end',flexWrap:'wrap'}}><label>Mês<input type="month" value={mes} onChange={e=>setMes(e.target.value)}/></label><button type="button" className="ghost" disabled={loading||fechando} onClick={()=>void carregar()}>Atualizar</button><button type="button" className="ghost" disabled={loading||fechando||linhas.length===0} onClick={()=>void exportarExcel()}>Exportar Excel completo</button><button type="button" className="ghost" disabled={loading||fechando||linhas.length===0} onClick={exportarPDF}>Exportar PDF</button><button type="button" disabled={loading||fechando||!!arquivo||mes>=mesAtual()} onClick={()=>void fechar()}>{arquivo?'Mês fechado':fechando?'A fechar...':'Fechar e guardar mês'}</button></div>
   <p className="sub">{arquivo?`Arquivo fechado em ${new Date(arquivo.fechado_em).toLocaleString('pt-PT')}.`:'Mês aberto: os dados são consultados diretamente nos registos existentes.'}</p>
   {mensagem&&<p role="status" className="status">{mensagem}</p>}
   {loading?<p>A carregar...</p>:<>
