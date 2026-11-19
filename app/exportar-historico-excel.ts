@@ -25,7 +25,8 @@ export async function criarExcelHistorico({mes,linhas,fechado,fechadoEm}:Dados){
   sh.getRow(4).values=[...cols.map(c=>c.header)];const hr=sh.getRow(4);hr.height=26;hr.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:vinho}};c.font={bold:true,color:{argb:branco}};c.alignment={vertical:'middle',wrapText:true}});
   rows.forEach((r,i)=>{const row=sh.getRow(i+5);cols.forEach((c,j)=>{const cell=row.getCell(j+1);const val=r[c.key];cell.value=c.date?dataExcel(val as string):typeof val==='number'?val:seguro(val);if(c.money)cell.numFmt=moeda;if(c.date)cell.numFmt='dd/mm/yyyy';cell.alignment={vertical:'top',wrapText:c.width>=25};});if(i%2===0)row.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:creme}}});});
   sh.autoFilter={from:{row:4,column:1},to:{row:4,column:cols.length}};
-  sh.printTitlesRow='1:4';return sh;
+  sh.pageSetup.printTitlesRow = '1:4';
+return sh;
  }
  const total=(f:(l:Linha)=>boolean)=>ordenadas.filter(f).reduce((s,l)=>s+(Number.isFinite(l.valor)?l.valor:0),0);
  const resumo=[
