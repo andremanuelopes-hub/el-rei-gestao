@@ -98,7 +98,7 @@ function AgendaSemanal(){
  const tarefasHoje=tarefas.filter(t=>t.data===hojeIso).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
  const mudarMesAgenda=(deslocamento:number)=>{const d=new Date(mesData.getFullYear(),mesData.getMonth()+deslocamento,1);setMesAgenda(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);setDiaSelecionado(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`)};
 
- const proximas=tarefas.filter(t=>!t.concluida&&(t.data>hojeIso||(t.data===hojeIso&&(!t.hora||t.hora.slice(0,5)>=`${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`)))).sort((a,b)=>a.data.localeCompare(b.data)||(a.hora||'').localeCompare(b.hora||''));
+ const proximas=tarefas.filter(t=>!t.concluida&&t.data>hojeIso).sort((a,b)=>a.data.localeCompare(b.data)||(a.hora||'').localeCompare(b.hora||''));
  const proxima=proximas[0];
  const abrirNova=(dia=hojeIso,local='geral')=>{setFormLocal(local);setEditando(null);setForm({data:dia,hora:'09:00',descricao:''});setFormAberto(true)};
  const abrirEditar=(t:TarefaAgenda,local='geral')=>{setFormLocal(local);setEditando(t.id);setForm({data:t.data,hora:t.hora?.slice(0,5)||'',descricao:t.descricao});setFormAberto(true)};
@@ -184,7 +184,7 @@ function AgendaSemanal(){
      {tarefasHoje.length===0?<p style={{fontSize:13,marginBottom:0}}>Sem tarefas agendadas para hoje.</p>:tarefasHoje.map(t=><div key={t.id} className={'agenda-tarefa'+(t.concluida?' feita':'')}><button type="button" className={'agenda-check'+(t.concluida?' concluida':'')} aria-pressed={t.concluida} aria-label={(t.concluida?'Reabrir ':'Concluir ')+t.descricao} onClick={()=>void concluir(t)}>{t.concluida?'✓ CONCLUÍDA':'○ POR CONCLUIR'}</button><span>{t.hora?t.hora.slice(0,5)+' — ':''}{t.descricao}</span><div className="agenda-acoes"><button type="button" onClick={()=>abrirEditar(t,'cartao-hoje')}>Editar</button><button type="button" onClick={()=>void eliminar(t)}>Eliminar</button></div></div>)}
      {formulario('cartao-hoje')}
     </div>
-    <div className="agenda-cartao"><small>PRÓXIMA TAREFA</small>{proxima?<><strong>{dataPT(proxima.data)}{proxima.hora?' · '+proxima.hora.slice(0,5):''}</strong><span>{proxima.descricao}</span></>:<><strong>Sem tarefas pendentes</strong><span>Adiciona uma tarefa à agenda.</span></>}
+    <div className="agenda-cartao"><small>PRÓXIMA TAREFA</small>{proxima?<><strong>{dataPT(proxima.data)}{proxima.hora?' · '+proxima.hora.slice(0,5):''}</strong><span>{proxima.descricao}</span></>:<><strong>Sem próximas tarefas agendadas</strong><span>Adiciona uma tarefa para amanhã ou uma data posterior.</span></>}
      <button type="button" className="agenda-nova-cartao" aria-expanded={formAberto&&formLocal==='cartao-proxima'} onClick={()=>{if(formAberto&&formLocal==='cartao-proxima'&&!editando)setFormAberto(false);else abrirNova(hojeIso,'cartao-proxima')}}>+ Nova tarefa</button>
      {formulario('cartao-proxima')}
     </div>
