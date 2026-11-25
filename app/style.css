@@ -198,3 +198,23 @@ th, td {
 .mercadorias-form-grid > button {align-self:end;min-height:46px;white-space:normal;}
 @media(max-width:900px){.mercadorias-form-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}}
 @media(max-width:540px){.mercadorias-form-grid{grid-template-columns:minmax(0,1fr) !important;}}
+
+/* Alinhamento do Diario e contraste dos submenus */
+button.ghost { color:#641d32; background:#fff8ed; border:1px solid #d7c6bc; }
+button.ghost:hover:not(:disabled) { background:#f0e1d7; }
+.mercadorias-tabs button { min-width:96px; min-height:48px; }
+.mercadorias-tabs button[aria-pressed="true"] { background:#641d32; color:#fff; border:1px solid #641d32; }
+.mercadorias-tabs button[aria-pressed="false"] { background:#fff8ed; color:#641d32; border:1px solid #d7c6bc; }
+.columns { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.columns > .panel { min-width:0; }
+.diario-field { display:grid !important; grid-template-columns:minmax(0,1fr) minmax(0,190px) 88px !important; gap:8px !important; align-items:start !important; }
+.diario-field > label { padding-top:11px; overflow-wrap:anywhere; }
+.diario-field > div { width:100% !important; min-width:0; }
+.diario-field > div > input { width:100% !important; min-width:0; height:48px; text-align:right; }
+.diario-field > button { margin-left:0 !important; width:100%; min-height:48px; padding:8px 4px !important; font-size:14px; }
+.fatura-form-grid { display:grid !important; grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr)); align-items:end; gap:12px; }
+.fatura-form-grid > label { min-width:0; width:100%; }
+.fatura-form-grid input,.fatura-form-grid select { width:100%; min-width:0; max-width:100%; height:48px; padding:10px; border:1px solid #d7c6bc; border-radius:7px; background:#fff; color:#392d2c; }
+.fatura-form-grid > button { min-height:48px; width:100%; padding:10px; white-space:normal; }
+@media(max-width:1000px){ .columns { grid-template-columns:1fr; } }
+@media(max-width:480px){ .diario-field { grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) 72px !important; gap:5px !important; } .diario-field > button { font-size:12px; } .diario-field > div > div > div { flex-wrap:wrap !important; } }
